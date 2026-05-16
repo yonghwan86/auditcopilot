@@ -9,6 +9,8 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { AppSidebar } from "@/components/AppSidebar";
+import { AppHeader } from "@/components/AppHeader";
 
 function NotFoundComponent() {
   return (
@@ -72,19 +74,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "K-Petro 일상감사 AI 어시스턴트 (데모)" },
+      { name: "description", content: "한국석유관리원 일상감사 담당자를 위한 AI 기반 감사 문서 자동 분석 시스템" },
+      { name: "author", content: "K-Petro" },
+      { property: "og:title", content: "K-Petro 일상감사 AI 어시스턴트" },
+      { property: "og:description", content: "공공기관 일상감사 문서 자동 분석 데모" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: appCss,
+        href: "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap",
+      },
+      {
+        rel: "stylesheet",
+        href: "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css",
       },
     ],
   }),
@@ -113,7 +122,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <div className="flex min-h-screen bg-background text-foreground">
+        <AppSidebar />
+        <main className="flex-1 flex flex-col min-w-0">
+          <AppHeader />
+          <div className="flex-1 p-8 overflow-y-auto">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </QueryClientProvider>
   );
 }
