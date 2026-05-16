@@ -14,7 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      regulation_clauses: {
+        Row: {
+          clause_id: string
+          content: string
+          created_at: string
+          id: string
+          order_index: number
+          regulation_id: string
+          title: string | null
+        }
+        Insert: {
+          clause_id: string
+          content: string
+          created_at?: string
+          id?: string
+          order_index?: number
+          regulation_id: string
+          title?: string | null
+        }
+        Update: {
+          clause_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          order_index?: number
+          regulation_id?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regulation_clauses_regulation_id_fkey"
+            columns: ["regulation_id"]
+            isOneToOne: false
+            referencedRelation: "regulations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regulations: {
+        Row: {
+          category: string
+          created_at: string
+          effective_date: string | null
+          file_format: string
+          file_name: string
+          full_markdown: string | null
+          id: string
+          is_image_based: boolean
+          note: string | null
+          parse_error: string | null
+          parse_status: string
+          storage_path: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          effective_date?: string | null
+          file_format: string
+          file_name: string
+          full_markdown?: string | null
+          id?: string
+          is_image_based?: boolean
+          note?: string | null
+          parse_error?: string | null
+          parse_status?: string
+          storage_path: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          effective_date?: string | null
+          file_format?: string
+          file_name?: string
+          full_markdown?: string | null
+          id?: string
+          is_image_based?: boolean
+          note?: string | null
+          parse_error?: string | null
+          parse_status?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
