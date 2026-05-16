@@ -9,7 +9,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 
-const menu = [
+const menu: { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }[] = [
   { to: "/", label: "대시보드", icon: LayoutDashboard, exact: true },
   { to: "/regulations", label: "규정 라이브러리", icon: Library },
   { to: "/audit", label: "감사 수행", icon: ClipboardCheck },
@@ -17,7 +17,7 @@ const menu = [
   { to: "/rules", label: "룰셋 관리", icon: Settings },
   { to: "/history", label: "감사 이력", icon: History },
   { to: "/help", label: "도움말", icon: HelpCircle },
-] as const;
+];
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
