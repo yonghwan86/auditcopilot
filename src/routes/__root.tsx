@@ -11,6 +11,7 @@ import {
 import appCss from "../styles.css?url";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -131,6 +132,7 @@ function RootComponent() {
           </div>
         </main>
       </div>
+      <Toaster position="top-right" richColors />
     </QueryClientProvider>
   );
 }
