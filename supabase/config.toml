@@ -1,1 +1,4 @@
 project_id = "uibhfiwmfyggssmuwmwx"
+
+[functions.extract-regulation]
+verify_jwt = false
