@@ -11,6 +11,8 @@ import {
   Loader2,
   File,
   AlertCircle,
+  RefreshCw,
+  BookOpen,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -51,6 +53,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export const Route = createFileRoute("/regulations")({
   head: () => ({
@@ -62,7 +71,6 @@ export const Route = createFileRoute("/regulations")({
   component: RegulationsPage,
 });
 
-// --- 상수 ---
 const ALLOWED_EXTS = ["pdf", "hwp", "hwpx", "txt", "docx"] as const;
 type FileFormat = (typeof ALLOWED_EXTS)[number];
 const CATEGORIES = ["법률", "시행령", "시행규칙", "내부규정", "지침"] as const;
@@ -83,6 +91,15 @@ type Regulation = {
   created_at: string;
 };
 
+type Clause = {
+  id: string;
+  regulation_id: string;
+  clause_id: string;
+  title: string | null;
+  content: string;
+  order_index: number;
+};
+
 function extOf(name: string): string {
   const i = name.lastIndexOf(".");
   return i >= 0 ? name.slice(i + 1).toLowerCase() : "";
@@ -93,24 +110,60 @@ function nameWithoutExt(name: string): string {
   return i > 0 ? name.slice(0, i) : name;
 }
 
-function parseStatusBadge(status: string) {
-  switch (status) {
-    case "completed":
-      return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200">완료</Badge>;
-    case "parsing":
-      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200">파싱 중</Badge>;
-    case "failed":
-      return <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100 border-rose-200">실패</Badge>;
-    case "pending":
-    default:
-      return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">대기</Badge>;
+function ParseStatusBadge({
+  status,
+  clauseCount,
+  parseError,
+}: {
+  status: string;
+  clauseCount?: number;
+  parseError?: string | null;
+}) {
+  if (status === "completed") {
+    return (
+      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200">
+        완료{typeof clauseCount === "number" ? ` (조항 ${clauseCount}개)` : ""}
+      </Badge>
+    );
   }
+  if (status === "parsing") {
+    return (
+      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200">
+        <Loader2 className="size-3 mr-1 animate-spin" />
+        파싱 중...
+      </Badge>
+    );
+  }
+  if (status === "failed") {
+    const badge = (
+      <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100 border-rose-200 cursor-help">
+        실패
+      </Badge>
+    );
+    if (parseError) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs whitespace-pre-wrap">
+              {parseError}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    return badge;
+  }
+  return (
+    <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-slate-200">
+      대기 중
+    </Badge>
+  );
 }
 
 function RegulationsPage() {
   const qc = useQueryClient();
 
-  // 업로드/모달 상태
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [docName, setDocName] = useState("");
@@ -120,14 +173,13 @@ function RegulationsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
-  // 목록 필터
   const [keyword, setKeyword] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
-  // 선택 / 삭제
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Regulation | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [openClause, setOpenClause] = useState<Clause | null>(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["regulations"],
@@ -138,6 +190,37 @@ function RegulationsPage() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Regulation[];
+    },
+  });
+
+  // 조항 개수 집계 (간단 카운트 — 전체 가져와 client에서 그룹)
+  const { data: clauseCounts = {} } = useQuery({
+    queryKey: ["regulation-clause-counts"],
+    queryFn: async (): Promise<Record<string, number>> => {
+      const { data, error } = await supabase
+        .from("regulation_clauses")
+        .select("regulation_id");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of data as { regulation_id: string }[]) {
+        counts[row.regulation_id] = (counts[row.regulation_id] ?? 0) + 1;
+      }
+      return counts;
+    },
+  });
+
+  // 선택된 규정의 조항 목록
+  const { data: selectedClauses = [] } = useQuery({
+    queryKey: ["regulation-clauses", selectedId],
+    enabled: !!selectedId,
+    queryFn: async (): Promise<Clause[]> => {
+      const { data, error } = await supabase
+        .from("regulation_clauses")
+        .select("*")
+        .eq("regulation_id", selectedId!)
+        .order("order_index", { ascending: true });
+      if (error) throw error;
+      return data as Clause[];
     },
   });
 
@@ -155,12 +238,50 @@ function RegulationsPage() {
     [items, selectedId],
   );
 
-  // 선택된 항목이 목록에서 사라지면 해제
   useEffect(() => {
     if (selectedId && !items.find((r) => r.id === selectedId)) {
       setSelectedId(null);
     }
   }, [items, selectedId]);
+
+  // Realtime 구독: regulations 테이블의 변경 감지
+  useEffect(() => {
+    const channel = supabase
+      .channel("regulations-parse")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "regulations" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["regulations"] });
+          qc.invalidateQueries({ queryKey: ["regulation-clause-counts"] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "regulation_clauses" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["regulation-clause-counts"] });
+          qc.invalidateQueries({ queryKey: ["regulation-clauses"] });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
+
+  async function invokeExtract(regulationId: string) {
+    try {
+      const { error } = await supabase.functions.invoke("extract-regulation", {
+        body: { regulation_id: regulationId },
+      });
+      if (error) throw error;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "파싱 호출 실패";
+      toast.error("파싱 요청 실패", { description: msg });
+    }
+  }
 
   function handleFileChosen(file: File) {
     const ext = extOf(file.name);
@@ -200,7 +321,6 @@ function RegulationsPage() {
     const storagePath = `${crypto.randomUUID()}.${ext}`;
 
     try {
-      // 1) Storage 업로드
       const { error: upErr } = await supabase.storage
         .from("regulations")
         .upload(storagePath, pendingFile, {
@@ -209,25 +329,27 @@ function RegulationsPage() {
         });
       if (upErr) throw upErr;
 
-      // 2) DB INSERT
-      const { error: insErr } = await supabase.from("regulations").insert({
-        file_name: docName.trim(),
-        file_format: ext,
-        category,
-        effective_date: effectiveDate || null,
-        storage_path: storagePath,
-        parse_status: "pending",
-        note: note.trim() || null,
-      });
+      const { data: inserted, error: insErr } = await supabase
+        .from("regulations")
+        .insert({
+          file_name: docName.trim(),
+          file_format: ext,
+          category,
+          effective_date: effectiveDate || null,
+          storage_path: storagePath,
+          parse_status: "pending",
+          note: note.trim() || null,
+        })
+        .select("id")
+        .single();
 
-      if (insErr) {
-        // INSERT 실패 시 업로드된 파일 정리
+      if (insErr || !inserted) {
         await supabase.storage.from("regulations").remove([storagePath]);
-        throw insErr;
+        throw insErr ?? new Error("등록 실패");
       }
 
       toast.success("규정이 등록되었습니다.", {
-        description: "다음 단계에서 자동 파싱이 진행될 예정입니다.",
+        description: "자동 파싱이 시작됩니다.",
       });
       setPendingFile(null);
       setDocName("");
@@ -235,6 +357,9 @@ function RegulationsPage() {
       setEffectiveDate("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       qc.invalidateQueries({ queryKey: ["regulations"] });
+
+      // 자동 파싱 호출 (비동기 — 결과는 Realtime으로 수신)
+      invokeExtract(inserted.id);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "업로드 중 오류가 발생했습니다.";
       toast.error("등록 실패", { description: msg });
@@ -247,15 +372,11 @@ function RegulationsPage() {
     if (!pendingDelete) return;
     setDeleting(true);
     try {
-      // Storage 파일 삭제 (실패해도 계속 진행)
       const { error: storageErr } = await supabase.storage
         .from("regulations")
         .remove([pendingDelete.storage_path]);
-      if (storageErr) {
-        console.warn("Storage 삭제 실패:", storageErr.message);
-      }
+      if (storageErr) console.warn("Storage 삭제 실패:", storageErr.message);
 
-      // DB 삭제 (조항은 CASCADE)
       const { error: dbErr } = await supabase
         .from("regulations")
         .delete()
@@ -287,9 +408,13 @@ function RegulationsPage() {
     }
   }
 
+  async function handleRetry(r: Regulation) {
+    toast.info("파싱을 재시도합니다...");
+    await invokeExtract(r.id);
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* 헤더 */}
       <div>
         <h1 className="text-2xl font-bold text-slate-800">규정 라이브러리</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -297,7 +422,6 @@ function RegulationsPage() {
         </p>
       </div>
 
-      {/* 업로드 영역 */}
       <section
         onDragOver={(e) => {
           e.preventDefault();
@@ -338,7 +462,6 @@ function RegulationsPage() {
         </div>
       </section>
 
-      {/* 목록 */}
       <section className="bg-card border border-border rounded-2xl shadow-sm">
         <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <h2 className="font-semibold text-slate-800">등록된 규정 목록</h2>
@@ -427,9 +550,25 @@ function RegulationsPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(r.created_at).toLocaleDateString("ko-KR")}
                     </TableCell>
-                    <TableCell>{parseStatusBadge(r.parse_status)}</TableCell>
+                    <TableCell>
+                      <ParseStatusBadge
+                        status={r.parse_status}
+                        clauseCount={clauseCounts[r.id] ?? 0}
+                        parseError={r.parse_error}
+                      />
+                    </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
+                        {r.parse_status === "failed" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRetry(r)}
+                            title="파싱 재시도"
+                          >
+                            <RefreshCw className="size-4" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -457,7 +596,7 @@ function RegulationsPage() {
         </div>
       </section>
 
-      {/* 상세 패널 */}
+      {/* 상세 패널 + 조항 목록 */}
       <section className="bg-card border border-border rounded-2xl shadow-sm">
         <div className="p-4 border-b border-border">
           <h2 className="font-semibold text-slate-800">상세 정보</h2>
@@ -469,34 +608,125 @@ function RegulationsPage() {
               <p className="text-sm">위 목록에서 규정을 선택하면 상세 정보가 표시됩니다.</p>
             </div>
           ) : (
-            <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-              <Field label="문서명" value={selected.file_name} />
-              <Field label="분류" value={selected.category} />
-              <Field label="파일 형식" value={selected.file_format.toUpperCase()} />
-              <Field label="시행일" value={selected.effective_date ?? "—"} />
-              <Field
-                label="등록일"
-                value={new Date(selected.created_at).toLocaleString("ko-KR")}
-              />
-              <Field label="파싱 상태" value={<>{parseStatusBadge(selected.parse_status)}</>} />
-              <Field label="스캔본 여부" value={selected.is_image_based ? "예" : "아니오"} />
-              <Field label="저장 경로" value={<code className="text-xs">{selected.storage_path}</code>} />
-              <div className="md:col-span-2">
-                <dt className="text-xs font-medium text-muted-foreground mb-1">비고</dt>
-                <dd className="text-slate-800 whitespace-pre-wrap">
-                  {selected.note?.trim() ? selected.note : "—"}
-                </dd>
-              </div>
-              {selected.parse_error && (
-                <div className="md:col-span-2">
-                  <dt className="text-xs font-medium text-rose-600 mb-1">파싱 오류</dt>
-                  <dd className="text-rose-700 text-xs whitespace-pre-wrap">{selected.parse_error}</dd>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* 메타데이터 */}
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm self-start">
+                <Field label="문서명" value={selected.file_name} />
+                <Field label="분류" value={selected.category} />
+                <Field label="파일 형식" value={selected.file_format.toUpperCase()} />
+                <Field label="시행일" value={selected.effective_date ?? "—"} />
+                <Field
+                  label="등록일"
+                  value={new Date(selected.created_at).toLocaleString("ko-KR")}
+                />
+                <Field
+                  label="파싱 상태"
+                  value={
+                    <ParseStatusBadge
+                      status={selected.parse_status}
+                      clauseCount={clauseCounts[selected.id] ?? 0}
+                      parseError={selected.parse_error}
+                    />
+                  }
+                />
+                <Field label="스캔본 여부" value={selected.is_image_based ? "예" : "아니오"} />
+                <Field
+                  label="저장 경로"
+                  value={<code className="text-xs break-all">{selected.storage_path}</code>}
+                />
+                <div className="sm:col-span-2">
+                  <dt className="text-xs font-medium text-muted-foreground mb-1">비고</dt>
+                  <dd className="text-slate-800 whitespace-pre-wrap">
+                    {selected.note?.trim() ? selected.note : "—"}
+                  </dd>
                 </div>
-              )}
-            </dl>
+                {selected.parse_error && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs font-medium text-rose-600 mb-1">파싱 오류</dt>
+                    <dd className="text-rose-700 text-xs whitespace-pre-wrap">
+                      {selected.parse_error}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+
+              {/* 조항 목록 */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <BookOpen className="size-4 text-kpetro-navy" />
+                  <h3 className="font-semibold text-slate-800 text-sm">
+                    추출된 조항 ({selectedClauses.length}개)
+                  </h3>
+                </div>
+                {selected.parse_status === "parsing" ? (
+                  <div className="flex items-center text-sm text-muted-foreground py-6">
+                    <Loader2 className="size-4 animate-spin mr-2" />
+                    파싱 중입니다...
+                  </div>
+                ) : selectedClauses.length === 0 ? (
+                  <div className="text-sm text-muted-foreground py-6 border border-dashed rounded-lg text-center">
+                    추출된 조항이 없습니다.
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[420px] pr-3 border rounded-lg">
+                    <ul className="divide-y">
+                      {selectedClauses.map((c) => (
+                        <li
+                          key={c.id}
+                          className="p-3 hover:bg-slate-50 cursor-pointer"
+                          onClick={() => setOpenClause(c)}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge
+                              variant="outline"
+                              className="font-mono text-xs border-kpetro-navy/30 text-kpetro-navy"
+                            >
+                              {c.clause_id}
+                            </Badge>
+                            {c.title && (
+                              <span className="text-sm font-medium text-slate-800 truncate">
+                                {c.title}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {c.content.slice(0, 200)}
+                            {c.content.length > 200 ? "…" : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </ScrollArea>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </section>
+
+      {/* 조항 전체 본문 모달 */}
+      <Dialog open={!!openClause} onOpenChange={(o) => !o && setOpenClause(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className="font-mono border-kpetro-navy/30 text-kpetro-navy"
+              >
+                {openClause?.clause_id}
+              </Badge>
+              {openClause?.title && (
+                <span className="text-base">{openClause.title}</span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 pr-3 -mr-3">
+            <pre className="whitespace-pre-wrap text-sm font-sans text-slate-800 leading-relaxed">
+              {openClause?.content}
+            </pre>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       {/* 메타데이터 입력 모달 */}
       <Dialog
@@ -590,7 +820,6 @@ function RegulationsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 삭제 확인 */}
       <AlertDialog
         open={!!pendingDelete}
         onOpenChange={(open) => !open && !deleting && setPendingDelete(null)}
