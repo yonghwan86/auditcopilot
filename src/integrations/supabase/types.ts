@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_rules: {
+        Row: {
+          condition_desc: string | null
+          created_at: string
+          false_positive_count: number
+          id: string
+          improvement_template: string | null
+          is_active: boolean
+          related_clause_ref: string | null
+          rule_name: string
+          severity: string
+          trigger_type: string
+          trigger_value: string
+        }
+        Insert: {
+          condition_desc?: string | null
+          created_at?: string
+          false_positive_count?: number
+          id?: string
+          improvement_template?: string | null
+          is_active?: boolean
+          related_clause_ref?: string | null
+          rule_name: string
+          severity: string
+          trigger_type: string
+          trigger_value: string
+        }
+        Update: {
+          condition_desc?: string | null
+          created_at?: string
+          false_positive_count?: number
+          id?: string
+          improvement_template?: string | null
+          is_active?: boolean
+          related_clause_ref?: string | null
+          rule_name?: string
+          severity?: string
+          trigger_type?: string
+          trigger_value?: string
+        }
+        Relationships: []
+      }
       regulation_clauses: {
         Row: {
           clause_id: string
