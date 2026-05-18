@@ -110,6 +110,18 @@ function nameWithoutExt(name: string): string {
   return i > 0 ? name.slice(0, i) : name;
 }
 
+// crypto.randomUUID()는 일부 sandbox/iframe 환경에서 undefined일 수 있어 폴백 제공.
+function safeUUID(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 function ParseStatusBadge({
   status,
   clauseCount,
@@ -193,21 +205,8 @@ function RegulationsPage() {
     },
   });
 
-  // 조항 개수 집계 (간단 카운트 — 전체 가져와 client에서 그룹)
-  const { data: clauseCounts = {} } = useQuery({
-    queryKey: ["regulation-clause-counts"],
-    queryFn: async (): Promise<Record<string, number>> => {
-      const { data, error } = await supabase
-        .from("regulation_clauses")
-        .select("regulation_id");
-      if (error) throw error;
-      const counts: Record<string, number> = {};
-      for (const row of data as { regulation_id: string }[]) {
-        counts[row.regulation_id] = (counts[row.regulation_id] ?? 0) + 1;
-      }
-      return counts;
-    },
-  });
+  // (제거됨) clauseCounts 쿼리는 매번 전체 테이블을 스캔하는 성능 폭탄이었음.
+  // 목록 테이블에서는 개수를 표시하지 않고, 상세 패널에서는 selectedClauses.length로 표시함.
 
   // 선택된 규정의 조항 목록
   const { data: selectedClauses = [] } = useQuery({
@@ -244,29 +243,39 @@ function RegulationsPage() {
     }
   }, [items, selectedId]);
 
-  // Realtime 구독: regulations 테이블의 변경 감지
+  // Realtime 구독: regulations 테이블의 parse_status 변화만 감지.
+  // regulation_clauses INSERT 이벤트는 구독하지 않음 (조항 1개당 1이벤트 → 폭주 원인).
+  // parse_status가 'completed' 또는 'failed'로 끝났을 때만 조항 목록을 한 번 갱신.
   useEffect(() => {
+    let throttleTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleInvalidate = (keys: string[]) => {
+      if (throttleTimer) return;
+      throttleTimer = setTimeout(() => {
+        throttleTimer = null;
+        for (const k of keys) qc.invalidateQueries({ queryKey: [k] });
+      }, 200);
+    };
+
     const channel = supabase
       .channel("regulations-parse")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "regulations" },
-        () => {
-          qc.invalidateQueries({ queryKey: ["regulations"] });
-          qc.invalidateQueries({ queryKey: ["regulation-clause-counts"] });
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "regulation_clauses" },
-        () => {
-          qc.invalidateQueries({ queryKey: ["regulation-clause-counts"] });
-          qc.invalidateQueries({ queryKey: ["regulation-clauses"] });
+        (payload) => {
+          const newStatus = (payload.new as { parse_status?: string } | null)
+            ?.parse_status;
+          if (newStatus === "completed" || newStatus === "failed") {
+            // 파싱이 끝난 순간에만 조항 목록도 함께 갱신
+            scheduleInvalidate(["regulations", "regulation-clauses"]);
+          } else {
+            scheduleInvalidate(["regulations"]);
+          }
         },
       )
       .subscribe();
 
     return () => {
+      if (throttleTimer) clearTimeout(throttleTimer);
       supabase.removeChannel(channel);
     };
   }, [qc]);
@@ -318,7 +327,7 @@ function RegulationsPage() {
     }
     setSubmitting(true);
     const ext = extOf(pendingFile.name) as FileFormat;
-    const storagePath = `${crypto.randomUUID()}.${ext}`;
+    const storagePath = `${safeUUID()}.${ext}`;
 
     try {
       const { error: upErr } = await supabase.storage
@@ -396,13 +405,26 @@ function RegulationsPage() {
 
   async function handleView(r: Regulation) {
     setSelectedId(r.id);
+    // 사용자 클릭 직후 빈 탭을 먼저 열어 두어야 팝업 차단을 회피할 수 있음.
+    // await 이후에 window.open을 호출하면 브라우저가 팝업으로 간주해 차단함.
+    const newWindow = window.open("about:blank", "_blank", "noopener,noreferrer");
     try {
       const { data, error } = await supabase.storage
         .from("regulations")
         .createSignedUrl(r.storage_path, 60);
       if (error) throw error;
-      if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+      if (data?.signedUrl) {
+        if (newWindow) {
+          newWindow.location.href = data.signedUrl;
+        } else {
+          // 팝업이 차단된 경우 같은 탭에서 열기
+          window.location.href = data.signedUrl;
+        }
+      } else {
+        newWindow?.close();
+      }
     } catch (e) {
+      newWindow?.close();
       const msg = e instanceof Error ? e.message : "파일을 열 수 없습니다.";
       toast.error("파일 열기 실패", { description: msg });
     }
@@ -553,7 +575,6 @@ function RegulationsPage() {
                     <TableCell>
                       <ParseStatusBadge
                         status={r.parse_status}
-                        clauseCount={clauseCounts[r.id] ?? 0}
                         parseError={r.parse_error}
                       />
                     </TableCell>
@@ -624,7 +645,7 @@ function RegulationsPage() {
                   value={
                     <ParseStatusBadge
                       status={selected.parse_status}
-                      clauseCount={clauseCounts[selected.id] ?? 0}
+                      clauseCount={selectedClauses.length}
                       parseError={selected.parse_error}
                     />
                   }
