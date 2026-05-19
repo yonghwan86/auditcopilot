@@ -14,6 +14,76 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_findings: {
+        Row: {
+          created_at: string
+          excerpt: string
+          excerpt_position: number
+          finding_type: string
+          id: string
+          improvement: string | null
+          is_false_positive: boolean
+          matched_clause_id: string | null
+          matched_rule_id: string | null
+          reason: string | null
+          reviewed: boolean
+          session_id: string
+          severity: string
+        }
+        Insert: {
+          created_at?: string
+          excerpt: string
+          excerpt_position?: number
+          finding_type: string
+          id?: string
+          improvement?: string | null
+          is_false_positive?: boolean
+          matched_clause_id?: string | null
+          matched_rule_id?: string | null
+          reason?: string | null
+          reviewed?: boolean
+          session_id: string
+          severity: string
+        }
+        Update: {
+          created_at?: string
+          excerpt?: string
+          excerpt_position?: number
+          finding_type?: string
+          id?: string
+          improvement?: string | null
+          is_false_positive?: boolean
+          matched_clause_id?: string | null
+          matched_rule_id?: string | null
+          reason?: string | null
+          reviewed?: boolean
+          session_id?: string
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_findings_matched_clause_id_fkey"
+            columns: ["matched_clause_id"]
+            isOneToOne: false
+            referencedRelation: "regulation_clauses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_findings_matched_rule_id_fkey"
+            columns: ["matched_rule_id"]
+            isOneToOne: false
+            referencedRelation: "audit_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_findings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "audit_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_rules: {
         Row: {
           condition_desc: string | null
@@ -53,6 +123,57 @@ export type Database = {
           severity?: string
           trigger_type?: string
           trigger_value?: string
+        }
+        Relationships: []
+      }
+      audit_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          progress_percent: number
+          report_json: Json | null
+          status: string
+          status_message: string | null
+          target_file_format: string
+          target_file_name: string
+          target_full_markdown: string | null
+          target_storage_path: string
+          total_findings: number
+          total_sentences: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          progress_percent?: number
+          report_json?: Json | null
+          status?: string
+          status_message?: string | null
+          target_file_format: string
+          target_file_name: string
+          target_full_markdown?: string | null
+          target_storage_path: string
+          total_findings?: number
+          total_sentences?: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          progress_percent?: number
+          report_json?: Json | null
+          status?: string
+          status_message?: string | null
+          target_file_format?: string
+          target_file_name?: string
+          target_full_markdown?: string | null
+          target_storage_path?: string
+          total_findings?: number
+          total_sentences?: number
         }
         Relationships: []
       }
