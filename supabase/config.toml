@@ -2,3 +2,6 @@ project_id = "uibhfiwmfyggssmuwmwx"
 
 [functions.extract-regulation]
 verify_jwt = false
+
+[functions.analyze-audit]
+verify_jwt = false
