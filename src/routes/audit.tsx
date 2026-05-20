@@ -814,7 +814,7 @@ function ResultsView({
                   isSelected={selectedFindingId === f.id}
                   onSelect={() => setSelectedFindingId(f.id)}
                   onChanged={() => qc.invalidateQueries({ queryKey: ["audit-findings", session.id] })}
-                  fullText={session.target_full_markdown_local}
+                  
                 />
               ))}
             </div>
