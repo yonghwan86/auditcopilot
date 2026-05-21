@@ -1,31 +1,23 @@
-## 변경 사항 요약
+## 변경 사항
 
-업로드된 `regulations.tsx`와 현재 프로젝트 파일을 비교한 결과, 다음 5가지 개선이 포함되어 있습니다.
+### 1. 헤더 (`src/components/AppHeader.tsx`)
+- 제목에서 `(데모)` 텍스트 제거 → "한국석유관리원 일상감사 AI 어시스턴트"
+- 우측 노란 `DEMO` 뱃지 제거
+- `v0.1.0` 버전 뱃지는 유지
 
-### 1. `safeUUID()` 헬퍼 추가
-- `crypto.randomUUID()`가 일부 sandbox/iframe 환경에서 undefined인 문제 대비 폴백 구현
-- Storage 경로 생성 시 `crypto.randomUUID()` → `safeUUID()` 로 교체
+### 2. 사이드바 (`src/components/AppSidebar.tsx`)
+- 하단 접속 계정 카드의 "감사팀 데모 사용자" → "감사팀 사용자"
+- "데모 환경 · 인증 없음" → "감사실 / 일상감사팀" (역할/소속 표기)
 
-### 2. `clauseCounts` 쿼리 제거 (성능 개선)
-- 매번 `regulation_clauses` 테이블 전체를 스캔하던 카운트 쿼리 삭제
-- 목록 테이블의 `ParseStatusBadge`에서는 조항 개수 미표시
-- 상세 패널에서는 `selectedClauses.length`로 대체
+### 3. 대시보드 (`src/routes/index.tsx`)
+- 기존 노란색 "시연용 안내" 배너 제거
+- 대체 콘텐츠: 파란 톤의 **빠른 시작 안내 배너** 추가
+  - 아이콘: `Sparkles` (lucide)
+  - 제목: "일상감사 AI 어시스턴트 사용 안내"
+  - 본문: "규정 라이브러리에 문서를 등록하고, 감사 수행 메뉴에서 대상 문서를 업로드하면 자동으로 지적 사항이 도출됩니다."
+  - 스타일: `bg-blue-50 border-blue-200 text-blue-900` 톤 (디자인 시스템 내 슬레이트/블루 계열과 일관)
 
-### 3. Realtime 구독 최적화
-- `regulation_clauses` INSERT 이벤트 구독 제거 (조항 1개당 1이벤트로 폭주하던 원인)
-- `regulations` 테이블의 `parse_status` 변경만 감지
-- `completed`/`failed` 시점에만 조항 목록 갱신
-- 200ms throttle 타이머로 invalidate 호출 묶음 처리
+### 4. 메타 (`src/routes/__root.tsx`)
+- 변경 없음 (제목 이미 "K-Petro 일상감사 AI 어시스턴트")
 
-### 4. 파일 보기 팝업 차단 회피
-- `handleView`에서 클릭 직후 `window.open("about:blank")`로 먼저 탭을 열고, signedUrl 받은 뒤 `newWindow.location.href`로 이동
-- 팝업 차단된 경우 같은 탭에서 열도록 폴백
-- 에러 시 임시 탭 닫기
-
-### 5. 사소한 주석/구조 정리
-
-## 실행 계획
-
-1. `src/routes/regulations.tsx`를 업로드된 버전으로 교체 (단일 파일 변경)
-
-다른 파일(라우팅, DB 스키마, Edge Function, 디자인 토큰)은 변경 없음.
+다른 파일/페이지의 "데모" 문자열(예: rules/audit 페이지)은 사용자가 명시한 두 영역(헤더 DEMO 뱃지, 대시보드 시연용 배너)에 해당하지 않으므로 손대지 않습니다.
