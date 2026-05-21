@@ -259,9 +259,11 @@ function splitClauses(markdown: string): Clause[] {
     return clauses.map((c) => ({ ...c, content: c.content.trim() }));
   }
 
-  // 2차: 정규식 fallback — 본문에서 "제 X 조" 패턴으로 직접 자르기
+  // 2차: 정규식 fallback — 본문에서 "제 X 조" 패턴으로 직접 자르기.
+  // 줄 시작(^)에서만 매치되도록 'm' 플래그 사용 → 본문 중간의 cross-reference
+  // ("국가계약법 제4조의 규정에 의한…")는 새 조항으로 잘못 자르지 않음.
   const fallback: Clause[] = [];
-  const re = /제\s*(\d+)\s*조(?:\s*의\s*(\d+))?(?:\s*\(([^)]+)\))?/g;
+  const re = /^[ \t]*제\s*(\d+)\s*조(?:\s*의\s*(\d+))?(?:\s*\(([^)]+)\))?/gm;
   const matches: { idx: number; id: string; title: string | null }[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(markdown)) !== null) {
