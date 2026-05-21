@@ -195,14 +195,21 @@ function RegulationsPage() {
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["regulations"],
+    // 목록에 표시할 컬럼만 명시적으로 선택.
+    // SELECT * 을 쓰면 full_markdown(파싱된 규정 본문 전체, 수MB)도 함께 내려와서
+    // 목록 로딩이 5~10초까지 느려짐. 본문은 상세 패널에서도 쓰지 않으므로 제외.
     queryFn: async (): Promise<Regulation[]> => {
       const { data, error } = await supabase
         .from("regulations")
-        .select("*")
+        .select(
+          "id, file_name, file_format, category, effective_date, storage_path, parse_status, parse_error, note, is_image_based, created_at",
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Regulation[];
     },
+    // 30초 동안은 캐시된 결과 재사용 — 사이드바 메뉴 오갈 때마다 재조회 안 함.
+    staleTime: 30_000,
   });
 
   // (제거됨) clauseCounts 쿼리는 매번 전체 테이블을 스캔하는 성능 폭탄이었음.
@@ -221,6 +228,8 @@ function RegulationsPage() {
       if (error) throw error;
       return data as Clause[];
     },
+    // 같은 규정을 다시 클릭할 때 즉시 표시되도록 캐시 유지.
+    staleTime: 30_000,
   });
 
   const filtered = useMemo(() => {
