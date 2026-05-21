@@ -62,8 +62,8 @@ export function AppSidebar() {
         <div className="mt-auto pt-6">
           <div className="bg-white/5 rounded-xl p-4">
             <p className="text-xs text-slate-400 mb-1">접속 계정</p>
-            <p className="text-sm font-medium">감사팀 데모 사용자</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">데모 환경 · 인증 없음</p>
+            <p className="text-sm font-medium">감사팀 사용자</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">감사실 · 일상감사팀</p>
           </div>
         </div>
       </div>

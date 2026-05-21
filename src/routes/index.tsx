@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, FileText, Plus, BookOpen, ClipboardList, TrendingUp, Calendar } from "lucide-react";
+import { Sparkles, FileText, Plus, BookOpen, ClipboardList, TrendingUp, Calendar } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,13 +21,13 @@ const kpis = [
 function Dashboard() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* 데모 안내 배너 */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 text-amber-900">
-        <AlertTriangle className="size-5 mt-0.5 shrink-0 text-amber-600" />
+      {/* 빠른 시작 안내 배너 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3 text-blue-900">
+        <Sparkles className="size-5 mt-0.5 shrink-0 text-blue-600" />
         <div>
-          <p className="font-bold text-sm">시연용 안내</p>
+          <p className="font-bold text-sm">일상감사 AI 어시스턴트 사용 안내</p>
           <p className="text-sm opacity-90 mt-0.5">
-            본 사이트는 시연용 데모입니다. 실제 감사 데이터를 업로드하지 마세요.
+            규정 라이브러리에 문서를 등록하고, 감사 수행 메뉴에서 대상 문서를 업로드하면 자동으로 지적 사항이 도출됩니다.
           </p>
         </div>
       </div>
