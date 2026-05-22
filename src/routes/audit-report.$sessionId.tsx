@@ -79,7 +79,7 @@ function buildOverall(dist: { 상: number; 중: number; 하: number }, total: nu
 
 function ReportEditorPage() {
   const { sessionId } = Route.useParams();
-  const navigate = useNavigate();
+  
   const [report, setReport] = useState<ReportJson | null>(null);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
