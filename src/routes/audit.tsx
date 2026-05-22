@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -697,8 +697,10 @@ function ResultsView({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled className="gap-2">
-            <FileText className="size-4" /> 보고서 초안 생성
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/audit-report/$sessionId" params={{ sessionId: session.id }}>
+              <FileText className="size-4" /> 보고서 초안 생성
+            </Link>
           </Button>
           <Button variant="outline" size="sm" onClick={handleDownload} className="gap-2">
             <Download className="size-4" /> 원본 다운로드
