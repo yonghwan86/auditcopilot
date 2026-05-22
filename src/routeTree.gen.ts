@@ -16,6 +16,7 @@ import { Route as HistoryRouteImport } from './routes/history'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuditReportSessionIdRouteImport } from './routes/audit-report.$sessionId'
 
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
@@ -52,6 +53,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuditReportSessionIdRoute = AuditReportSessionIdRouteImport.update({
+  id: '/audit-report/$sessionId',
+  path: '/audit-report/$sessionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/regulations': typeof RegulationsRoute
   '/rules': typeof RulesRoute
   '/search': typeof SearchRoute
+  '/audit-report/$sessionId': typeof AuditReportSessionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/regulations': typeof RegulationsRoute
   '/rules': typeof RulesRoute
   '/search': typeof SearchRoute
+  '/audit-report/$sessionId': typeof AuditReportSessionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/regulations': typeof RegulationsRoute
   '/rules': typeof RulesRoute
   '/search': typeof SearchRoute
+  '/audit-report/$sessionId': typeof AuditReportSessionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/regulations'
     | '/rules'
     | '/search'
+    | '/audit-report/$sessionId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/regulations'
     | '/rules'
     | '/search'
+    | '/audit-report/$sessionId'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/regulations'
     | '/rules'
     | '/search'
+    | '/audit-report/$sessionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   RegulationsRoute: typeof RegulationsRoute
   RulesRoute: typeof RulesRoute
   SearchRoute: typeof SearchRoute
+  AuditReportSessionIdRoute: typeof AuditReportSessionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/audit-report/$sessionId': {
+      id: '/audit-report/$sessionId'
+      path: '/audit-report/$sessionId'
+      fullPath: '/audit-report/$sessionId'
+      preLoaderRoute: typeof AuditReportSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,7 +203,18 @@ const rootRouteChildren: RootRouteChildren = {
   RegulationsRoute: RegulationsRoute,
   RulesRoute: RulesRoute,
   SearchRoute: SearchRoute,
+  AuditReportSessionIdRoute: AuditReportSessionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
