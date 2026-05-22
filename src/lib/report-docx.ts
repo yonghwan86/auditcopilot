@@ -43,7 +43,7 @@ function body(text: string, opts: { bold?: boolean; size?: number } = {}) {
   return new TextRun({ text, bold: opts.bold, size: opts.size ?? 20, font: FONT });
 }
 
-function p(text: string, opts: { bold?: boolean; size?: number; align?: AlignmentType; spacingAfter?: number } = {}) {
+function p(text: string, opts: { bold?: boolean; size?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; spacingAfter?: number } = {}) {
   return new Paragraph({
     alignment: opts.align,
     spacing: { after: opts.spacingAfter ?? 80 },
